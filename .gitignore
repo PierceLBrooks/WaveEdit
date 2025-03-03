@@ -1,1 +1,7 @@
 *.o
+*.dat
+install
+cmake
+WaveEdit
+.DS_Store
+
