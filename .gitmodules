@@ -1,9 +1,6 @@
 [submodule "ext/lodepng"]
 	path = ext/lodepng
 	url = https://github.com/lvandeve/lodepng.git
-[submodule "ext/imgui"]
-	path = ext/imgui
-	url = https://github.com/AndrewBelt/imgui.git
 [submodule "ext/pffft"]
 	path = ext/pffft
 	url = https://github.com/marton78/pffft.git
