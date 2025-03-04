@@ -7,6 +7,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+#include <iostream>
 #include <string>
 #include <thread>
 #include <vector>
@@ -120,8 +121,13 @@ size_t fwriteLE16(uint16_t x, FILE *f);
 size_t freadLE32(uint32_t *x, FILE *f);
 /** Reads a 16-bit integer in little endian order */
 size_t freadLE16(uint16_t *x, FILE *f);
+/** Reads a line */
+size_t freadLine(std::string *x, FILE *f);
 unsigned char *base64_encode(const unsigned char *src, size_t len, size_t *out_len);
 unsigned char *base64_decode(const unsigned char *src, size_t len, size_t *out_len);
+void openDebugLog(const char *path);
+void debugLog(const char *message);
+void closeDebugLog();
 
 
 ////////////////////
@@ -149,21 +155,23 @@ enum EffectID {
 extern const char *effectNames[EFFECTS_LEN];
 
 struct Wave {
-	float samples[WAVE_LEN];
+    int waveLen;
+	std::vector<float> samples; // WAVE_LEN
 	/** FFT of wave, interleaved complex numbers */
-	float spectrum[WAVE_LEN];
+	std::vector<float> spectrum; // WAVE_LEN
 	/** Norm of spectrum */
-	float harmonics[WAVE_LEN / 2];
+    std::vector<float> harmonics; // WAVE_LEN / 2
 	/** Wave after effects have been applied */
-	float postSamples[WAVE_LEN];
-	float postSpectrum[WAVE_LEN];
-	float postHarmonics[WAVE_LEN / 2];
+    std::vector<float> postSamples; // WAVE_LEN
+    std::vector<float> postSpectrum; // WAVE_LEN
+    std::vector<float> postHarmonics; // WAVE_LEN / 2
 
-	float effects[EFFECTS_LEN];
+    int effectsLen;
+    std::vector<float> effects; // EFFECTS_LEN
 	bool cycle;
 	bool normalize;
 
-	void clear();
+	void clear(int len = WAVE_LEN);
 	/** Generates post arrays from the sample array, by applying effects */
 	void updatePost();
 	void commitSamples();
@@ -177,6 +185,8 @@ struct Wave {
 	/** Writes to a global state */
 	void clipboardCopy();
 	void clipboardPaste();
+    /** Constructor */
+    Wave(int len = WAVE_LEN);
 };
 
 extern bool clipboardActive;
@@ -191,18 +201,20 @@ extern bool clipboardActive;
 #define BANK_GRID_HEIGHT 8
 
 struct Bank {
-	Wave waves[BANK_LEN];
+    int bankLen;
+    int waveLen;
+	std::vector<Wave> waves; // BANK_LEN
 
-	void clear();
+	void clear(int len = BANK_LEN);
 	void swap(int i, int j);
 	void shuffle();
 	/** `in` must be length BANK_LEN * WAVE_LEN */
 	void setSamples(const float *in);
 	void getPostSamples(float *out);
 	void duplicateToAll(int waveId);
-	/** Binary dump of the bank struct */
-	void save(const char *filename);
-	void load(const char *filename);
+	/** Textual dump of the bank struct */
+	bool save(const char *filename);
+	bool load(const char *filename);
 	/** WAV file with BANK_LEN * WAVE_LEN samples */
 	void saveWAV(const char *filename);
 	void loadWAV(const char *filename);
@@ -214,6 +226,8 @@ struct Bank {
 	void loadAuto(const char *filename);
 	/** Saves each wave to its own file in a directory */
 	void saveWaves(const char *dirname);
+    /** Constructor */
+    Bank(int len = BANK_LEN);
 };
 
 
@@ -235,7 +249,7 @@ extern Bank currentBank;
 ////////////////////
 
 struct CatalogFile {
-	float samples[WAVE_LEN];
+	std::vector<float> samples;
 	std::string name;
 };
 
@@ -320,4 +334,4 @@ extern char lastFilename[1024];
 // import.cpp
 ////////////////////
 
-void importPage();
+void importPage(int bankLen, int waveLen);

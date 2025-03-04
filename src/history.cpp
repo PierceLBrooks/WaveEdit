@@ -2,7 +2,7 @@
 #include <SDL.h>
 
 
-Bank currentBank;
+Bank currentBank = Bank();
 
 static std::vector<Bank> history;
 static int currentIndex = -1;

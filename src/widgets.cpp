@@ -285,8 +285,8 @@ static void waveMenu() {
 
 
 void renderBankGrid(const char *name, float height, int gridWidth, float *gridX, float *gridY) {
-	assert(BANK_LEN % gridWidth == 0);
-	int gridHeight = BANK_LEN / gridWidth;
+	assert(currentBank.bankLen % gridWidth == 0);
+	int gridHeight = currentBank.bankLen / gridWidth;
 
 	ImGuiContext &g = *GImGui;
 	ImGuiWindow *window = ImGui::GetCurrentWindow();
@@ -307,7 +307,7 @@ void renderBankGrid(const char *name, float height, int gridWidth, float *gridX,
 	// Wave grid
 	int selectedStart = mini(selectedId, lastSelectedId);
 	int selectedEnd = maxi(selectedId, lastSelectedId);
-	for (int j = 0; j < BANK_LEN; j++) {
+	for (int j = 0; j < currentBank.waves.size(); j++) {
 		int x = j % gridWidth;
 		int y = j / gridWidth;
 		// Compute cell box
@@ -322,10 +322,10 @@ void renderBankGrid(const char *name, float height, int gridWidth, float *gridX,
 		// Draw lines
 		ImGui::PushClipRect(cellBox.Min, cellBox.Max, true);
 		ImVec2 lastPos;
-		for (int i = 0; i < WAVE_LEN; i++) {
+		for (int i = 0; i < currentBank.waves[j].waveLen; i++) {
 			float value = currentBank.waves[j].postSamples[i];
 			float margin = 3.0;
-			ImVec2 pos = ImVec2(rescalef(i, 0, WAVE_LEN - 1, cellBox.Min.x, cellBox.Max.x), rescalef(value, 1.0, -1.0, cellBox.Min.y + margin, cellBox.Max.y - margin));
+			ImVec2 pos = ImVec2(rescalef(i, 0, currentBank.waves[j].waveLen - 1, cellBox.Min.x, cellBox.Max.x), rescalef(value, 1.0, -1.0, cellBox.Min.y + margin, cellBox.Max.y - margin));
 			if (i > 0)
 				window->DrawList->AddLine(lastPos, pos, ImGui::GetColorU32(ImGuiCol_PlotLines));
 			lastPos = pos;
@@ -372,10 +372,13 @@ void renderBankGrid(const char *name, float height, int gridWidth, float *gridX,
 		int clickedId = (int)roundf(gridPos.y) * gridWidth + (int)roundf(gridPos.x);
 
 		// Ctrl-click dragging buffers
-		static Bank dragBank;
-		static Wave dragWaves[BANK_LEN];
+		static Bank dragBank = Bank();
+		static std::vector<Wave> dragWaves;
 		static int dragId, dragStart, dragEnd;
 		if (g.IO.KeyCtrl && !g.IO.MouseReleased[0]) {
+            while (dragWaves.size() <= currentBank.bankLen) {
+                dragWaves.push_back(Wave(currentBank.waveLen));
+            }
 			if (g.IO.MouseClicked[0]) {
 				dragBank = currentBank;
 				dragId = clickedId;
@@ -390,12 +393,12 @@ void renderBankGrid(const char *name, float height, int gridWidth, float *gridX,
 				currentBank = dragBank;
 				for (int i = dragStart; i <= dragEnd; i++) {
 					int j = i + offsetId;
-					if (0 <= j && j < BANK_LEN)
+					if (0 <= j && j < currentBank.bankLen)
 						currentBank.waves[j] = dragWaves[i];
 				}
 				// Move selection
-				selectedId = clampi(dragStart + offsetId, 0, BANK_LEN-1);
-				lastSelectedId = clampi(dragEnd + offsetId, 0, BANK_LEN-1);
+				selectedId = clampi(dragStart + offsetId, 0, currentBank.bankLen-1);
+				lastSelectedId = clampi(dragEnd + offsetId, 0, currentBank.bankLen-1);
 			}
 		}
 		else if (g.IO.MouseClicked[1]) {
@@ -490,7 +493,7 @@ void renderWaterfall(const char *name, float height, float amplitude, float angl
 		ImVec2 point = g.IO.MousePos;
 		ImVec2 a = ImVec2(rescalef(point.x, box.Min.x, box.Max.x, -1.0, 1.0), rescalef(point.y, box.Min.y, box.Max.y, 1.0, -1.0));
 		a = ImRotate(a * M_SQRT2, cosf(-theta), sinf(-theta));
-		float z = clampf(rescalef(a.y, -1.0, 1.0, 0, BANK_LEN-1), 0.0, BANK_LEN-1);
+		float z = clampf(rescalef(a.y, -1.0, 1.0, 0, currentBank.bankLen-1), 0.0, currentBank.bankLen-1);
 		if (g.IO.MouseClicked[1])
 			z = roundf(z);
 		*activeZ = z;
@@ -501,33 +504,33 @@ void renderWaterfall(const char *name, float height, float amplitude, float angl
 	ImVec2 waveOffset = ImVec2(5, -5);
 
 	// Pre-effect plots
-	for (int b = 0; b < BANK_LEN; b++) {
-		ImVec2 points[WAVE_LEN];
-		for (int i = 0; i < WAVE_LEN; i++) {
+	for (int b = 0; b < currentBank.bankLen; b++) {
+		std::vector<ImVec2> points;
+		for (int i = 0; i < currentBank.waveLen; i++) {
 			float value = currentBank.waves[b].samples[i];
-			ImVec2 a = ImVec2(rescalef(i, 0, WAVE_LEN-1, -1.0, 1.0), rescalef(b, 0, BANK_LEN-1, -1.0, 1.0));
+			ImVec2 a = ImVec2(rescalef(i, 0, currentBank.waveLen-1, -1.0, 1.0), rescalef(b, 0, currentBank.bankLen-1, -1.0, 1.0));
 			a = ImRotate(a, cosf(theta), sinf(theta)) / M_SQRT2;
 			a.y += -amplitude * 0.3 * value;
 			ImVec2 point = ImVec2(rescalef(a.x, -1.0, 1.0, box.Min.x, box.Max.x), rescalef(a.y, 1.0, -1.0, box.Min.y, box.Max.y));
-			points[i] = point;
+            points.push_back(point);
 		}
 		float thickness = 1.0;
-		window->DrawList->AddPolyline(points, WAVE_LEN, ImGui::GetColorU32(ImGuiCol_FrameBg), false, thickness, true);
+		window->DrawList->AddPolyline(points.data(), currentBank.waveLen, ImGui::GetColorU32(ImGuiCol_FrameBg), false, thickness, true);
 	}
 
 	// Post-effect plots
-	for (int b = 0; b < BANK_LEN; b++) {
-		ImVec2 points[WAVE_LEN];
-		for (int i = 0; i < WAVE_LEN; i++) {
+	for (int b = 0; b < currentBank.bankLen; b++) {
+		std::vector<ImVec2> points;
+		for (int i = 0; i < currentBank.waveLen; i++) {
 			float value = currentBank.waves[b].postSamples[i];
-			ImVec2 a = ImVec2(rescalef(i, 0, WAVE_LEN-1, -1.0, 1.0), rescalef(b, 0, BANK_LEN-1, -1.0, 1.0));
+			ImVec2 a = ImVec2(rescalef(i, 0, currentBank.waveLen-1, -1.0, 1.0), rescalef(b, 0, currentBank.bankLen-1, -1.0, 1.0));
 			a = ImRotate(a, cosf(theta), sinf(theta)) / M_SQRT2;
 			a.y += -amplitude * 0.3 * value;
 			ImVec2 point = ImVec2(rescalef(a.x, -1.0, 1.0, box.Min.x, box.Max.x), rescalef(a.y, 1.0, -1.0, box.Min.y, box.Max.y));
-			points[i] = point;
+			points.push_back(point);
 		}
 		float thickness = 1.0 + 4.0 * fmaxf(1.0 - fabsf(b - *activeZ), 0.0);
-		window->DrawList->AddPolyline(points, WAVE_LEN, ImGui::GetColorU32(ImGuiCol_PlotHistogram), false, thickness, true);
+		window->DrawList->AddPolyline(points.data(), currentBank.waveLen, ImGui::GetColorU32(ImGuiCol_PlotHistogram), false, thickness, true);
 	}
 
 	ImGui::PopClipRect();

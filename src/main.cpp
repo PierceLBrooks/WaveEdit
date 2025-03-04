@@ -49,6 +49,8 @@ int main(int argc, char **argv) {
 	fixWorkingDirectory();
 #endif
 
+    openDebugLog((std::string(argv[0])+".log").c_str());
+
 	// Set up SDL
 	int err = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 	assert(!err);
@@ -142,5 +144,6 @@ int main(int argc, char **argv) {
 	SDL_GL_DeleteContext(glContext);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+    closeDebugLog();
 	return 0;
 }

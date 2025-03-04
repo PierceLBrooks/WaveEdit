@@ -44,6 +44,7 @@ static int dirEntries(DIR *dir, struct dirent *entries, int len) {
 void catalogInit() {
 	static const char *rootPath = "catalog";
 	DIR *rootDir = opendir(rootPath);
+    if (!rootDir) return;
 	struct dirent categoryEntries[128];
 	int categoriesLength = dirEntries(rootDir, categoryEntries, 128);
 
@@ -97,13 +98,10 @@ void catalogInit() {
 			int length;
 			float *samples = loadAudio(filePath, &length);
 			if (samples) {
-				if (length == WAVE_LEN) {
-					memcpy(catalogFile.samples, samples, sizeof(float) * WAVE_LEN);
-					catalogCategory.files.push_back(catalogFile);
-				}
-				else {
-					printf("%s has length %d but needs %d\n", filePath, length, WAVE_LEN);
-				}
+                for (int i = 0; i < length; i++) {
+                    catalogFile.samples.push_back(samples[i]);
+                }
+                catalogCategory.files.push_back(catalogFile);
 				delete[] samples;
 			}
 		}

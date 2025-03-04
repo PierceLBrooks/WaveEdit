@@ -14,7 +14,7 @@ float morphY = 0.0;
 float morphZ = 0.0;
 float morphZSpeed = 0.0;
 int playIndex = 0;
-Bank *playingBank;
+Bank *playingBank = NULL;
 
 static float morphXSmooth = morphX;
 static float morphYSmooth = morphY;
@@ -26,14 +26,14 @@ static SRC_STATE *audioSrc = NULL;
 long srcCallback(void *cb_data, float **data) {
 	float gain = powf(10.0, playVolume / 20.0);
 	// Generate next samples
-	const int inLen = 64;
+	const int inLen = BANK_GRID_WIDTH * BANK_GRID_HEIGHT;
 	static float in[inLen];
 	for (int i = 0; i < inLen; i++) {
 		if (morphInterpolate) {
 			const float lambdaMorph = fminf(0.1 / playFrequency, 0.5);
 			morphXSmooth = crossf(morphXSmooth, clampf(morphX, 0.0, BANK_GRID_WIDTH - 1), lambdaMorph);
 			morphYSmooth = crossf(morphYSmooth, clampf(morphY, 0.0, BANK_GRID_HEIGHT - 1), lambdaMorph);
-			morphZSmooth = crossf(morphZSmooth, clampf(morphZ, 0.0, BANK_LEN - 1), lambdaMorph);
+			morphZSmooth = crossf(morphZSmooth, clampf(morphZ, 0.0, playingBank->bankLen - 1), lambdaMorph);
 		}
 		else {
 			// Snap X, Y, Z
@@ -42,7 +42,7 @@ long srcCallback(void *cb_data, float **data) {
 			morphZSmooth = roundf(morphZ);
 		}
 
-		int index = (playIndex + i) % WAVE_LEN;
+		int index = (playIndex + i) % playingBank->waveLen;
 		if (playModeXY) {
 			// Morph XY
 			int xi = morphXSmooth;
@@ -66,14 +66,14 @@ long srcCallback(void *cb_data, float **data) {
 			float zf = morphZSmooth - zi;
 			in[i] = crossf(
 				playingBank->waves[zi].postSamples[index],
-				playingBank->waves[eucmodi(zi + 1, BANK_LEN)].postSamples[index],
+				playingBank->waves[eucmodi(zi + 1, playingBank->bankLen)].postSamples[index],
 				zf);
 		}
 		in[i] = clampf(in[i] * gain, -1.0, 1.0);
 	}
 
 	playIndex += inLen;
-	playIndex %= WAVE_LEN;
+	playIndex %= playingBank->waveLen;
 
 	*data = in;
 	return inLen;
@@ -89,7 +89,7 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
 		const float lambdaFrequency = 0.5;
 		playFrequency = clampf(playFrequency, 1.0, 10000.0);
 		playFrequencySmooth = powf(playFrequencySmooth, 1.0 - lambdaFrequency) * powf(playFrequency, lambdaFrequency);
-		double ratio = (double)audioSpec.freq / WAVE_LEN / playFrequencySmooth;
+		double ratio = (double)audioSpec.freq / playingBank->waveLen / playFrequencySmooth;
 
 		src_callback_read(audioSrc, ratio, outLen, out);
 
@@ -97,9 +97,9 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
 		if (!playModeXY && morphZSpeed > 0.f) {
 			float deltaZ = morphZSpeed * outLen / audioSpec.freq;
 			deltaZ = clampf(deltaZ, 0.f, 1.f);
-			morphZ += (BANK_LEN-1) * deltaZ;
-			if (morphZ >= (BANK_LEN-1)) {
-				morphZ = fmodf(morphZ, (BANK_LEN-1));
+			morphZ += (playingBank->bankLen-1) * deltaZ;
+			if (morphZ >= (playingBank->bankLen-1)) {
+				morphZ = fmodf(morphZ, (playingBank->bankLen-1));
 				morphZSmooth = morphZ;
 			}
 		}

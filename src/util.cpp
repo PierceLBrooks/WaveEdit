@@ -2,6 +2,7 @@
 #include <string.h>
 #include <sndfile.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -9,6 +10,10 @@
 #include <windows.h>
 #include <shellapi.h>
 #endif
+
+
+static FILE* logger = NULL;
+
 
 void openBrowser(const char *url) {
 	// shell injection is possible if the URL is not trusted
@@ -129,6 +134,24 @@ size_t freadLE16(uint16_t *x, FILE *f)
 		return 0;
 	*x = b[0] | (b[1] << 8);
 	return 1;
+}
+
+
+size_t freadLine(std::string *x, FILE *f)
+{
+    char c = '\0';
+    int i = 0;
+    std::string s = "";
+    for (;;) {
+        if (fread(&c, 1, 1, f) != 1)
+            return 0;
+        if (c == '\n')
+            break;
+        i++;
+        s.push_back(c);
+    }
+    *x += s;
+    return i;
 }
 
 
@@ -282,4 +305,24 @@ unsigned char * base64_decode(const unsigned char *src, size_t len,
 
 	*out_len = pos - out;
 	return out;
+}
+
+
+void debugLog(const char *message)
+{
+    if (logger) fwrite(message, strlen(message), 1, logger);
+}
+
+
+void openDebugLog(const char *path)
+{
+#ifdef DEBUG
+    if (!logger) logger = fopen(path, "w");
+#endif
+}
+
+
+void closeDebugLog()
+{
+    if (logger) fclose(logger);
 }

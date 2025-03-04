@@ -133,7 +133,7 @@ static void menuWebsite() {
 
 static void menuNewBank() {
 	showCurrentBankPage();
-	currentBank.clear();
+	currentBank.clear(currentBank.bankLen);
 	lastFilename[0] = '\0';
 	historyPush();
 }
@@ -155,7 +155,6 @@ static void menuOpenBank() {
 	char *dir = getLastDir();
 	char *path = osdialog_file(OSDIALOG_OPEN, dir, NULL, NULL);
 	if (path) {
-		showCurrentBankPage();
 		currentBank.loadAuto(path);
 		snprintf(lastFilename, sizeof(lastFilename), "%s", path);
 		historyPush();
@@ -200,7 +199,7 @@ static void menuQuit() {
 
 static void menuSelectAll() {
 	selectedId = 0;
-	lastSelectedId = BANK_LEN-1;
+	lastSelectedId = currentBank.bankLen-1;
 }
 
 static void menuCopy() {
@@ -220,7 +219,7 @@ static void menuPaste() {
 
 static void menuClear() {
 	for (int i = mini(selectedId, lastSelectedId); i <= maxi(selectedId, lastSelectedId); i++) {
-		currentBank.waves[i].clear();
+		currentBank.waves[i].clear(currentBank.waves[i].waveLen);
 	}
 	historyPush();
 }
@@ -233,7 +232,7 @@ static void menuRandomize() {
 }
 
 static void incrementSelectedId(int delta) {
-	selectWave(clampi(selectedId + delta, 0, BANK_LEN-1));
+	selectWave(clampi(selectedId + delta, 0, currentBank.bankLen-1));
 }
 
 static void menuKeyCommands() {
@@ -422,6 +421,38 @@ void renderMenu() {
 			}
 			ImGui::EndMenu();
 		}
+        // Audio Input
+        if (ImGui::BeginMenu("Audio Input")) {
+            int bankLen = currentBank.bankLen;
+            int waveLen = currentBank.waveLen;
+            showCurrentBankPage();
+            if (ImGui::MenuItem("Bank Length", NULL, false)) {
+                char *prompt = osdialog_prompt(OSDIALOG_INFO, "Bank Length", std::to_string(bankLen).c_str());
+                if (prompt != NULL) {
+                    if (strlen(prompt) > 0) {
+                        bankLen = atoi(prompt);
+                        if (bankLen % BANK_GRID_WIDTH == 0) {
+                            currentBank.clear(bankLen);
+                        } else {
+                            osdialog_message(OSDIALOG_ERROR, OSDIALOG_OK, (std::string("\"Bank Length\" must be a multiple of ")+std::to_string(BANK_GRID_WIDTH)).c_str());
+                        }
+                    }
+                    free(prompt);
+                }
+            }
+            if (ImGui::MenuItem("Wave Length", NULL, false)) {
+                char *prompt = osdialog_prompt(OSDIALOG_INFO, "Wave Length", std::to_string(waveLen).c_str());
+                if (prompt != NULL) {
+                    if (strlen(prompt) > 0) {
+                        waveLen = atoi(prompt);
+                        currentBank.waveLen = waveLen;
+                        currentBank.clear(bankLen);
+                    }
+                    free(prompt);
+                }
+            }
+            ImGui::EndMenu();
+        }
 		// Colors
 		if (ImGui::BeginMenu("Colors")) {
 			if (ImGui::MenuItem("Sol", NULL, styleId == 0)) {
@@ -480,7 +511,7 @@ void renderPreview() {
 		ImGui::PushItemWidth(-1.0);
 		float width = ImGui::CalcItemWidth() / 2.0 - ImGui::GetStyle().FramePadding.y;
 		ImGui::PushItemWidth(width);
-		ImGui::SliderFloat("##Morph Z", &morphZ, 0.0, BANK_LEN - 1, "Morph Z: %.3f");
+		ImGui::SliderFloat("##Morph Z", &morphZ, 0.0, currentBank.bankLen - 1, "Morph Z: %.3f");
 		ImGui::SameLine();
 		ImGui::SliderFloat("##Morph Z Speed", &morphZSpeed, 0.f, 10.f, "Morph Z Speed: %.3f Hz", 3.f);
 	}
@@ -507,6 +538,9 @@ void effectSlider(EffectID effect) {
 	snprintf(id, sizeof(id), "##%s", effectNames[effect]);
 	char text[64];
 	snprintf(text, sizeof(text), "%s: %%.3f", effectNames[effect]);
+    if (selectedId >= currentBank.waves.size()) {
+        return;
+    }
 	if (ImGui::SliderFloat(id, &currentBank.waves[selectedId].effects[effect], 0.0f, 1.0f, text)) {
 		currentBank.waves[selectedId].updatePost();
 		historyPush();
@@ -519,7 +553,7 @@ void editorPage() {
 	{
 		float dummyZ = 0.0;
 		ImGui::PushItemWidth(-1);
-		renderBankGrid("SidebarGrid", BANK_LEN * 35.0, 1, &dummyZ, &morphZ);
+		renderBankGrid("SidebarGrid", currentBank.bankLen * 35.0, 1, &dummyZ, &morphZ);
 		refreshMorphSnap();
 	}
 	ImGui::EndChild();
@@ -527,8 +561,10 @@ void editorPage() {
 	ImGui::SameLine();
 	ImGui::BeginChild("Editor", ImVec2(0, 0), true);
 	{
-		Wave *wave = &currentBank.waves[selectedId];
-		float *effects = wave->effects;
+        Wave *wave = NULL;
+        if (selectedId < currentBank.waves.size()) {
+            wave = &currentBank.waves[selectedId];
+        }
 
 		ImGui::PushItemWidth(-1);
 
@@ -536,8 +572,8 @@ void editorPage() {
 		renderToolSelector(&tool);
 
 		ImGui::SameLine();
-		if (ImGui::Button("Clear")) {
-			currentBank.waves[selectedId].clear();
+		if (ImGui::Button("Clear") && wave != NULL) {
+			wave->clear(wave->waveLen);
 			historyPush();
 		}
 
@@ -547,9 +583,13 @@ void editorPage() {
 			if (ImGui::Button(catalogCategory.name.c_str())) ImGui::OpenPopup(catalogCategory.name.c_str());
 			if (ImGui::BeginPopup(catalogCategory.name.c_str())) {
 				for (const CatalogFile &catalogFile : catalogCategory.files) {
-					if (ImGui::Selectable(catalogFile.name.c_str())) {
-						memcpy(currentBank.waves[selectedId].samples, catalogFile.samples, sizeof(float) * WAVE_LEN);
-						currentBank.waves[selectedId].commitSamples();
+					if (ImGui::Selectable(catalogFile.name.c_str()) && wave != NULL) {
+                        wave->waveLen = catalogFile.samples.size();
+                        wave->samples.clear();
+                        for (int i = 0; i < wave->waveLen; i++) {
+                            wave->samples.push_back(catalogFile.samples[i]);
+                        }
+						wave->commitSamples();
 						historyPush();
 					}
 				}
@@ -561,49 +601,57 @@ void editorPage() {
 		// if (ImGui::RadioButton("Smooth", tool == SMOOTH_TOOL)) tool = SMOOTH_TOOL;
 
 		ImGui::Text("Waveform");
-		const int oversample = 4;
-		float waveOversample[WAVE_LEN * oversample];
-		cyclicOversample(wave->postSamples, waveOversample, WAVE_LEN, oversample);
-		if (renderWave("WaveEditor", 200.0, wave->samples, WAVE_LEN, waveOversample, WAVE_LEN * oversample, tool)) {
-			currentBank.waves[selectedId].commitSamples();
-			historyPush();
-		}
+        if (wave != NULL) {
+            const int oversample = 4;
+            std::vector<float> waveOversample;
+            for (int i = 0; i < wave->waveLen * oversample; i++) {
+                waveOversample.push_back(0);
+            }
+            cyclicOversample(wave->postSamples.data(), waveOversample.data(), wave->waveLen, oversample);
+            if (renderWave("WaveEditor", 200.0, wave->samples.data(), wave->waveLen, waveOversample.data(), wave->waveLen * oversample, tool)) {
+                currentBank.waves[selectedId].commitSamples();
+                historyPush();
+            }
 
-		ImGui::Text("Harmonics");
-		if (renderHistogram("HarmonicEditor", 200.0, wave->harmonics, WAVE_LEN / 2, wave->postHarmonics, WAVE_LEN / 2, tool)) {
-			currentBank.waves[selectedId].commitHarmonics();
-			historyPush();
-		}
+            ImGui::Text("Harmonics");
+            if (renderHistogram("HarmonicEditor", 200.0, wave->harmonics.data(), wave->waveLen / 2, wave->postHarmonics.data(), wave->waveLen / 2, tool)) {
+                currentBank.waves[selectedId].commitHarmonics();
+                historyPush();
+            }
+        }
+
 
 		ImGui::Text("Effects");
 		for (int i = 0; i < EFFECTS_LEN; i++) {
 			effectSlider((EffectID) i);
 		}
 
-		if (ImGui::Checkbox("Cycle", &currentBank.waves[selectedId].cycle)) {
-			currentBank.waves[selectedId].updatePost();
-			historyPush();
-		}
-		ImGui::SameLine();
-		if (ImGui::Checkbox("Normalize", &currentBank.waves[selectedId].normalize)) {
-			currentBank.waves[selectedId].updatePost();
-			historyPush();
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Randomize")) {
-			currentBank.waves[selectedId].randomizeEffects();
-			historyPush();
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Reset")) {
-			currentBank.waves[selectedId].clearEffects();
-			historyPush();
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Bake")) {
-			currentBank.waves[selectedId].bakeEffects();
-			historyPush();
-		}
+        if (wave != NULL) {
+            if (ImGui::Checkbox("Cycle", &wave->cycle)) {
+                wave->updatePost();
+                historyPush();
+            }
+            ImGui::SameLine();
+            if (ImGui::Checkbox("Normalize", &wave->normalize)) {
+                wave->updatePost();
+                historyPush();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Randomize")) {
+                wave->randomizeEffects();
+                historyPush();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Reset")) {
+                wave->clearEffects();
+                historyPush();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Bake")) {
+                wave->bakeEffects();
+                historyPush();
+            }
+        }
 
 		ImGui::PopItemWidth();
 	}
@@ -612,13 +660,13 @@ void editorPage() {
 
 
 void effectHistogram(EffectID effect, Tool tool) {
-	float value[BANK_LEN];
+    std::vector<float> value;
 	float average = 0.0;
-	for (int i = 0; i < BANK_LEN; i++) {
-		value[i] = currentBank.waves[i].effects[effect];
+	for (int i = 0; i < currentBank.bankLen; i++) {
+		value.push_back(currentBank.waves[i].effects[effect]);
 		average += value[i];
 	}
-	average /= BANK_LEN;
+	average /= currentBank.bankLen;
 	float oldAverage = average;
 
 	ImGui::Text("%s", effectNames[effect]);
@@ -630,7 +678,7 @@ void effectHistogram(EffectID effect, Tool tool) {
 	if (ImGui::SliderFloat(id, &average, 0.0f, 1.0f, text)) {
 		// Change the average effect level to the new average
 		float deltaAverage = average - oldAverage;
-		for (int i = 0; i < BANK_LEN; i++) {
+		for (int i = 0; i < currentBank.bankLen; i++) {
 			if (0.0 < average && average < 1.0) {
 				currentBank.waves[i].effects[effect] = clampf(currentBank.waves[i].effects[effect] + deltaAverage, 0.0, 1.0);
 			}
@@ -642,8 +690,8 @@ void effectHistogram(EffectID effect, Tool tool) {
 		}
 	}
 
-	if (renderHistogram(effectNames[effect], 120, value, BANK_LEN, NULL, 0, tool)) {
-		for (int i = 0; i < BANK_LEN; i++) {
+	if (renderHistogram(effectNames[effect], 120, value.data(), currentBank.bankLen, NULL, 0, tool)) {
+		for (int i = 0; i < currentBank.bankLen; i++) {
 			if (currentBank.waves[i].effects[effect] != value[i]) {
 				// TODO This always selects the highest index. Select the index the mouse is hovering (requires renderHistogram() to return an int)
 				selectWave(i);
@@ -668,7 +716,7 @@ void effectPage() {
 		ImGui::PopItemWidth();
 
 		if (ImGui::Button("Cycle All")) {
-			for (int i = 0; i < BANK_LEN; i++) {
+			for (int i = 0; i < currentBank.bankLen; i++) {
 				currentBank.waves[i].cycle = true;
 				currentBank.waves[i].updatePost();
 				historyPush();
@@ -676,7 +724,7 @@ void effectPage() {
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Cycle None")) {
-			for (int i = 0; i < BANK_LEN; i++) {
+			for (int i = 0; i < currentBank.bankLen; i++) {
 				currentBank.waves[i].cycle = false;
 				currentBank.waves[i].updatePost();
 				historyPush();
@@ -684,7 +732,7 @@ void effectPage() {
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Normalize All")) {
-			for (int i = 0; i < BANK_LEN; i++) {
+			for (int i = 0; i < currentBank.bankLen; i++) {
 				currentBank.waves[i].normalize = true;
 				currentBank.waves[i].updatePost();
 				historyPush();
@@ -692,7 +740,7 @@ void effectPage() {
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Normalize None")) {
-			for (int i = 0; i < BANK_LEN; i++) {
+			for (int i = 0; i < currentBank.bankLen; i++) {
 				currentBank.waves[i].normalize = false;
 				currentBank.waves[i].updatePost();
 				historyPush();
@@ -700,21 +748,21 @@ void effectPage() {
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Randomize")) {
-			for (int i = 0; i < BANK_LEN; i++) {
+			for (int i = 0; i < currentBank.bankLen; i++) {
 				currentBank.waves[i].randomizeEffects();
 				historyPush();
 			}
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Reset")) {
-			for (int i = 0; i < BANK_LEN; i++) {
+			for (int i = 0; i < currentBank.bankLen; i++) {
 				currentBank.waves[i].clearEffects();
 				historyPush();
 			}
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Bake")) {
-			for (int i = 0; i < BANK_LEN; i++) {
+			for (int i = 0; i < currentBank.bankLen; i++) {
 				currentBank.waves[i].bakeEffects();
 				historyPush();
 			}
@@ -782,7 +830,7 @@ void renderMain() {
 		case EFFECT_PAGE: effectPage(); break;
 		case GRID_PAGE: gridPage(); break;
 		case WATERFALL_PAGE: waterfallPage(); break;
-		case IMPORT_PAGE: importPage(); break;
+		case IMPORT_PAGE: importPage(playingBank->bankLen, playingBank->waveLen); break;
 		default: break;
 		}
 	}
