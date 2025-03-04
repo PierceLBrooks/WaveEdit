@@ -50,6 +50,9 @@ int main(int argc, char **argv) {
 #endif
 
     openDebugLog((std::string(argv[0])+".log").c_str());
+    for (int i = 0; i < argc; i++) {
+        debugLog((std::string(argv[i])+"\n\0").c_str());
+    }
 
 	// Set up SDL
 	int err = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
