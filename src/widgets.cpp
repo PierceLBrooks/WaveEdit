@@ -1,7 +1,7 @@
 #include "WaveEdit.hpp"
 
+#include "imconfig.h"
 #include "imgui.h"
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
 
@@ -84,7 +84,7 @@ static bool editorBehavior(ImGuiID id, const ImRect& box, const ImRect& inner, f
 	ImGuiContext &g = *GImGui;
 	ImGuiWindow *window = ImGui::GetCurrentWindow();
 
-	bool hovered = ImGui::IsHovered(box, id);
+	bool hovered = ImGui::GetHoveredID() == id;
 	if (hovered) {
 		ImGui::SetHoveredID(id);
 		if (g.IO.MouseClicked[0]) {
@@ -340,7 +340,7 @@ void renderBankGrid(const char *name, float height, int gridWidth, float *gridX,
 	}
 
 	// Behavior
-	bool hovered = ImGui::IsHovered(box, id);
+	bool hovered = ImGui::GetHoveredID() == id;
 	if (hovered) {
 		ImGui::SetHoveredID(id);
 		if (g.IO.MouseClicked[0]) {
@@ -469,7 +469,7 @@ void renderWaterfall(const char *name, float height, float amplitude, float angl
 	ImGui::PushClipRect(box.Min, box.Max, true);
 
 	// Behavior
-	bool hovered = ImGui::IsHovered(box, id);
+	bool hovered = ImGui::GetHoveredID() == id;
 	if (hovered) {
 		ImGui::SetHoveredID(id);
 		if (g.IO.MouseClicked[0]) {
@@ -515,7 +515,7 @@ void renderWaterfall(const char *name, float height, float amplitude, float angl
             points.push_back(point);
 		}
 		float thickness = 1.0;
-		window->DrawList->AddPolyline(points.data(), currentBank.waveLen, ImGui::GetColorU32(ImGuiCol_FrameBg), false, thickness, true);
+		window->DrawList->AddPolyline(points.data(), currentBank.waveLen, ImGui::GetColorU32(ImGuiCol_FrameBg), ImDrawListFlags_AntiAliasedLines|ImDrawFlags_Closed, thickness);
 	}
 
 	// Post-effect plots
@@ -530,7 +530,7 @@ void renderWaterfall(const char *name, float height, float amplitude, float angl
 			points.push_back(point);
 		}
 		float thickness = 1.0 + 4.0 * fmaxf(1.0 - fabsf(b - *activeZ), 0.0);
-		window->DrawList->AddPolyline(points.data(), currentBank.waveLen, ImGui::GetColorU32(ImGuiCol_PlotHistogram), false, thickness, true);
+        window->DrawList->AddPolyline(points.data(), currentBank.waveLen, ImGui::GetColorU32(ImGuiCol_FrameBg), ImDrawListFlags_AntiAliasedLines|ImDrawFlags_Closed, thickness);
 	}
 
 	ImGui::PopClipRect();
@@ -559,7 +559,7 @@ float renderBankWave(const char *name, float height, const float *lines, int lin
 		return 0.0;
 
 	// Behavior
-	bool hovered = ImGui::IsHovered(box, id);
+	bool hovered = ImGui::GetHoveredID() == id;
 	if (hovered) {
 		ImGui::SetHoveredID(id);
 		if (g.IO.MouseClicked[0]) {
@@ -602,7 +602,7 @@ float renderBankWave(const char *name, float height, const float *lines, int lin
 	// Behavior
 	float delta = 0.0;
 	if (g.ActiveId == id) {
-		delta = g.IO.MouseDelta.x / (inner.Max.x, inner.Max.x);
+		delta = g.IO.MouseDelta.x / inner.Max.x;
 	}
 	return delta;
 }

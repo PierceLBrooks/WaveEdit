@@ -7,7 +7,7 @@
 
 #include "imconfig.h"
 #include "imgui.h"
-#include "imgui/examples/sdl_opengl2_example/imgui_impl_sdl.h"
+#include "ext/imgui/examples/sdl_opengl2_example/imgui_impl_sdl.h"
 
 
 #ifdef ARCH_MAC
@@ -79,6 +79,9 @@ int main(int argc, char **argv) {
 	SDL_GL_SetSwapInterval(1);
 
 	// Set up Imgui binding
+    ImGuiContext *imguiContext = ImGui::CreateContext();
+    if (!imguiContext) return -1;
+    ImGui::SetCurrentContext(imguiContext);
 	ImGui_ImplSdlGL2_Init(window);
 
 	// Initialize modules
@@ -136,6 +139,7 @@ int main(int argc, char **argv) {
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 		glClear(GL_COLOR_BUFFER_BIT);
 		ImGui::Render();
+        ImGui_ImplSdl_RenderDrawLists(ImGui::GetDrawData());
 		SDL_GL_SwapWindow(window);
 	}
 
