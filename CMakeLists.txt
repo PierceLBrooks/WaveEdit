@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16.0 FATAL_ERROR)
 
 #set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
+set(VERSION "1.2")
+
 set(LANGUAGES )
 if (APPLE)
     list(APPEND LANGUAGES "C")
@@ -35,7 +37,7 @@ else()
     endif()
 endif()
 
-project(WaveEditProject LANGUAGES ${LANGUAGES})
+project(WaveEditProject VERSION ${VERSION} LANGUAGES ${LANGUAGES})
 
 find_package(Threads REQUIRED)
 find_package(OpenGL REQUIRED)
@@ -124,6 +126,8 @@ include_directories(${SDL2_INCLUDE_DIR})
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
     list(APPEND DEF "DEBUG")
 endif()
+list(APPEND DEF "PFFFT_SIMD_DISABLE")
+list(APPEND DEF "VERSION=${VERSION}")
 
 add_executable(WaveEdit ${SRC})
 if (APPLE)

@@ -1,4 +1,4 @@
-VERSION = 1.1
+VERSION = 1.2
 
 FLAGS = -Wall -Wextra -Wno-unused-parameter -g -Wno-unused -O3 -march=nocona -ffast-math \
 	-DVERSION=$(VERSION) -DPFFFT_SIMD_DISABLE \
@@ -9,6 +9,7 @@ LDFLAGS =
 
 
 SOURCES = \
+	ext/osdialog/osdialog.c \
 	ext/pffft/pffft.c \
 	ext/lodepng/lodepng.cpp \
 	ext/imgui/imgui.cpp \
