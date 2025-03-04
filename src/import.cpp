@@ -26,28 +26,24 @@ static float *audio = NULL;
 static int audioLen = 0;
 static float *audioPreview = NULL;
 static char status[1024] = "";
-static Bank importBank = NULL;
+static Bank importBank;
 
 static int audioLenMin = 32;
 static int audioLenMax = BANK_LEN * WAVE_LEN * 100;
 
 
 static void zoomFit() {
-    int bankLen = BANK_LEN;
-    int waveLen = WAVE_LEN;
-    if (playingBank != NULL) {
-        bankLen = playingBank->bankLen;
-        waveLen = playingBank->waveLen;
-    }
+    int bankLen = importBank.bankLen;
+    int waveLen = importBank.waveLen;
 	zoom = clampf((float)audioLen / (bankLen * waveLen), 0.01, 100.0);
 }
 
-static void clearImport() {
+static void clearImport(int bankLen = BANK_LEN, int waveLen = WAVE_LEN) {
 	gain = 0.0;
 	offset = 0.0;
 	zoom = 1.0;
 	leftTrim = 0.0;
-	rightTrim = BANK_LEN;
+	rightTrim = bankLen * waveLen;
 	mode = CLEAR_IMPORT;
 	if (audio)
 		delete[] audio;
@@ -58,7 +54,8 @@ static void clearImport() {
 	audioPreview = NULL;
 
 	status[0] = '\0';
-	importBank.clear();
+    importBank.waveLen = waveLen;
+	importBank.clear(bankLen);
 }
 
 static void loadImport(const char *path, int bankLen = BANK_LEN, int waveLen = WAVE_LEN) {
@@ -84,7 +81,10 @@ static void loadImport(const char *path, int bankLen = BANK_LEN, int waveLen = W
 		return;
 	}
 
-	zoomFit();
+	//zoomFit();
+    zoom = 1.0;
+    leftTrim = 0;
+    rightTrim = bankLen * waveLen;
 
 	// Generate status line
 	char *pathCpy = strdup(path);
@@ -130,8 +130,8 @@ static void computeImport(float *samples, int bankLen = BANK_LEN, int waveLen = 
 	float yr = rescalef(xr, wl, wr, 0, bankLen * waveLen);
 	yl = clampf(yl, 0, bankLen * waveLen);
 	yr = clampf(yr, 0, bankLen * waveLen);
-	yl = clampf(yl, leftTrim * waveLen, rightTrim * waveLen);
-	yr = clampf(yr, leftTrim * waveLen, rightTrim * waveLen);
+	yl = clampf(yl, leftTrim, rightTrim);
+	yr = clampf(yr, leftTrim, rightTrim);
 	xl = rescalef(yl, 0, bankLen * waveLen, wl, wr);
 	xr = rescalef(yr, 0, bankLen * waveLen, wl, wr);
 	int xli = roundf(xl);
@@ -184,7 +184,7 @@ void importPage(int bankLen, int waveLen) {
 		if (ImGui::Button("Browse...")) {
 			char *path = osdialog_file(OSDIALOG_OPEN, NULL, NULL, NULL);
 			if (path) {
-				loadImport(path);
+				loadImport(path, bankLen, waveLen);
 				free(path);
 			}
 		}
@@ -269,7 +269,7 @@ void importPage(int bankLen, int waveLen) {
 			// Trim
 			if (ImGui::Button("Reset Trim")) {
 				leftTrim = 0;
-				rightTrim = bankLen;
+				rightTrim = bankLen * waveLen;
 			}
 			ImGui::SameLine();
 			static bool snapTrim = true;
@@ -282,9 +282,9 @@ void importPage(int bankLen, int waveLen) {
 			ImGui::PushItemWidth(-1.0);
 			float width = ImGui::CalcItemWidth() / 2.0 - ImGui::GetStyle().FramePadding.y;
 			ImGui::PushItemWidth(width);
-			ImGui::SliderFloat("##leftTrim", &leftTrim, 0.0, bankLen, snapTrim ? "Left Trim: %.0f" : "Left Trim: %.2f");
+			ImGui::SliderFloat("##leftTrim", &leftTrim, 0.0, bankLen * waveLen, snapTrim ? "Left Trim: %.0f" : "Left Trim: %.2f");
 			ImGui::SameLine();
-			ImGui::SliderFloat("##rightTrim", &rightTrim, 0.0, bankLen, snapTrim ? "Right Trim: %.0f" : "Right Trim: %.2f");
+			ImGui::SliderFloat("##rightTrim", &rightTrim, 0.0, bankLen * waveLen, snapTrim ? "Right Trim: %.0f" : "Right Trim: %.2f");
 			ImGui::PopItemWidth();
 			ImGui::PopItemWidth();
 
