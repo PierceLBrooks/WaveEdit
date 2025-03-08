@@ -4,4 +4,8 @@ libsamplerate*/
 libsamplerate*.*
 libsndfile*/
 libsndfile*.*
+bin/
+include/
+lib/
+share/
 
