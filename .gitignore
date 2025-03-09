@@ -4,5 +4,6 @@
 install
 cmake
 WaveEdit
+WaveEdit.exe
 .DS_Store
 
