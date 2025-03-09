@@ -57,9 +57,12 @@ void Wave::clear(int len) {
 }
 
 void Wave::updatePost() {
-    std::vector<float> out;
+    static std::vector<float> out;
+	while (out.size() < waveLen) {
+		out.push_back(0);
+	}
     for (int i = 0; i < waveLen; i++) {
-        out.push_back(samples[i]);
+        out[i] = samples[i];
     }
 
 	// Pre-gain

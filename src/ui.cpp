@@ -276,7 +276,7 @@ static void menuKeyCommands() {
 			if (ImGui::IsKeyPressed(io.OSXBehaviors ? SDLK_BACKSPACE : SDLK_DELETE))
 				menuClear();
 			// Pages
-			if (ImGui::IsKeyPressed(SDLK_SPACE))
+			if (ImGui::IsKeyPressed(SDLK_SPACE) && currentPage != IMPORT_PAGE)
 				playEnabled = !playEnabled;
 			if (ImGui::IsKeyPressed(SDLK_1))
 				currentPage = EDITOR_PAGE;
@@ -286,9 +286,10 @@ static void menuKeyCommands() {
 				currentPage = GRID_PAGE;
 			if (ImGui::IsKeyPressed(SDLK_4))
 				currentPage = WATERFALL_PAGE;
-			if (ImGui::IsKeyPressed(SDLK_5))
+			if (ImGui::IsKeyPressed(SDLK_5)) {
 				currentPage = IMPORT_PAGE;
-			if (ImGui::IsKeyPressed(SDL_SCANCODE_UP))
+				playEnabled = false;
+			} if (ImGui::IsKeyPressed(SDL_SCANCODE_UP))
 				incrementSelectedId(currentPage == GRID_PAGE ? -BANK_GRID_WIDTH : -1);
 			if (ImGui::IsKeyPressed(SDL_SCANCODE_DOWN))
 				incrementSelectedId(currentPage == GRID_PAGE ? BANK_GRID_WIDTH : 1);
@@ -430,7 +431,7 @@ void renderMenu() {
                 char *prompt = osdialog_prompt(OSDIALOG_INFO, "Bank Length", std::to_string(bankLen).c_str());
                 if (prompt != NULL) {
                     if (strlen(prompt) > 0) {
-                        bankLen = atoi(prompt);
+                        bankLen = std::min(44100, std::max(1, abs(atoi(prompt))));
                         if (bankLen % BANK_GRID_WIDTH == 0) {
                             currentBank.clear(bankLen);
                         } else {
@@ -444,7 +445,7 @@ void renderMenu() {
                 char *prompt = osdialog_prompt(OSDIALOG_INFO, "Wave Length", std::to_string(waveLen).c_str());
                 if (prompt != NULL) {
                     if (strlen(prompt) > 0) {
-                        waveLen = atoi(prompt);
+                        waveLen = std::min(44100, std::max(1, abs(atoi(prompt))));
                         currentBank.waveLen = waveLen;
                         currentBank.clear(bankLen);
                     }
@@ -489,6 +490,7 @@ void renderMenu() {
 
 void renderPreview() {
 	ImGui::Checkbox("Play", &playEnabled);
+	//if (playEnabled && currentPage == IMPORT_PAGE) playEnabled = false;
 	ImGui::SameLine();
 	ImGui::PushItemWidth(300.0);
 	ImGui::SliderFloat("##playVolume", &playVolume, -60.0f, 0.0f, "Volume: %.2f dB");
@@ -603,8 +605,8 @@ void editorPage() {
 		ImGui::Text("Waveform");
         if (wave != NULL) {
             const int oversample = 4;
-            std::vector<float> waveOversample;
-            for (int i = 0; i < wave->waveLen * oversample; i++) {
+            static std::vector<float> waveOversample;
+            while (waveOversample.size() < wave->waveLen * oversample) {
                 waveOversample.push_back(0);
             }
             cyclicOversample(wave->postSamples.data(), waveOversample.data(), wave->waveLen, oversample);
@@ -660,10 +662,13 @@ void editorPage() {
 
 
 void effectHistogram(EffectID effect, Tool tool) {
-    std::vector<float> value;
+    static std::vector<float> value;
 	float average = 0.0;
+	while (value.size() < currentBank.bankLen) {
+		value.push_back(0);
+	}
 	for (int i = 0; i < currentBank.bankLen; i++) {
-		value.push_back(currentBank.waves[i].effects[effect]);
+		value[i] = currentBank.waves[i].effects[effect];
 		average += value[i];
 	}
 	average /= currentBank.bankLen;
@@ -824,7 +829,7 @@ void renderMain() {
 		// Page
 		// Reset some audio variables. These might be changed within the pages.
 		playModeXY = false;
-		playingBank = &currentBank;
+		if (currentPage != IMPORT_PAGE) playingBank = &currentBank; //else playEnabled = false;
 		switch (currentPage) {
 		case EDITOR_PAGE: editorPage(); break;
 		case EFFECT_PAGE: effectPage(); break;

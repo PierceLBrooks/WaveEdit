@@ -504,15 +504,18 @@ void renderWaterfall(const char *name, float height, float amplitude, float angl
 	ImVec2 waveOffset = ImVec2(5, -5);
 
 	// Pre-effect plots
+	static std::vector<ImVec2> points;
+	while (points.size() < currentBank.waveLen) {
+		points.push_back(ImVec2(0, 0));
+	}
 	for (int b = 0; b < currentBank.bankLen; b++) {
-		std::vector<ImVec2> points;
 		for (int i = 0; i < currentBank.waveLen; i++) {
 			float value = currentBank.waves[b].samples[i];
 			ImVec2 a = ImVec2(rescalef(i, 0, currentBank.waveLen-1, -1.0, 1.0), rescalef(b, 0, currentBank.bankLen-1, -1.0, 1.0));
 			a = ImRotate(a, cosf(theta), sinf(theta)) / M_SQRT2;
 			a.y += -amplitude * 0.3 * value;
 			ImVec2 point = ImVec2(rescalef(a.x, -1.0, 1.0, box.Min.x, box.Max.x), rescalef(a.y, 1.0, -1.0, box.Min.y, box.Max.y));
-            points.push_back(point);
+            points[i] = point;
 		}
 		float thickness = 1.0;
 		window->DrawList->AddPolyline(points.data(), currentBank.waveLen, ImGui::GetColorU32(ImGuiCol_FrameBg), false, thickness, true);
@@ -520,14 +523,13 @@ void renderWaterfall(const char *name, float height, float amplitude, float angl
 
 	// Post-effect plots
 	for (int b = 0; b < currentBank.bankLen; b++) {
-		std::vector<ImVec2> points;
 		for (int i = 0; i < currentBank.waveLen; i++) {
 			float value = currentBank.waves[b].postSamples[i];
 			ImVec2 a = ImVec2(rescalef(i, 0, currentBank.waveLen-1, -1.0, 1.0), rescalef(b, 0, currentBank.bankLen-1, -1.0, 1.0));
 			a = ImRotate(a, cosf(theta), sinf(theta)) / M_SQRT2;
 			a.y += -amplitude * 0.3 * value;
 			ImVec2 point = ImVec2(rescalef(a.x, -1.0, 1.0, box.Min.x, box.Max.x), rescalef(a.y, 1.0, -1.0, box.Min.y, box.Max.y));
-			points.push_back(point);
+            points[i] = point;
 		}
 		float thickness = 1.0 + 4.0 * fmaxf(1.0 - fabsf(b - *activeZ), 0.0);
 		window->DrawList->AddPolyline(points.data(), currentBank.waveLen, ImGui::GetColorU32(ImGuiCol_PlotHistogram), false, thickness, true);

@@ -115,8 +115,8 @@ static void computeImport(float *samples, int bankLen = BANK_LEN, int waveLen = 
 		return;
 	}
 
-	std::vector<float> importSamples;
-    for (int i = 0; i < bankLen * waveLen; i++) {
+	static std::vector<float> importSamples;
+    while (importSamples.size() < bankLen * waveLen) {
         importSamples.push_back(0);
     }
 
@@ -191,17 +191,22 @@ void importPage(int bankLen, int waveLen) {
 		ImGui::SameLine();
 		ImGui::Text("%s", status);
 
-		playingBank = &importBank;
-        playingBank->waveLen = waveLen;
-        playingBank->clear(bankLen);
+		if (!playEnabled) {
+			playingBank = &importBank;
+			playingBank->waveLen = waveLen;
+			playingBank->clear(bankLen);
+		}
 		float amp = powf(10.0, gain / 20.0);
 
 		// Audio preview
 		ImGui::Text("Imported Audio Preview");
 		if (audioPreview) {
-            std::vector<float> audioPreviewGain;
+            static std::vector<float> audioPreviewGain;
+			while (audioPreviewGain.size() < bankLen * waveLen) {
+				audioPreviewGain.push_back(0);
+			}
 			for (int i = 0; i < bankLen * waveLen; i++) {
-				audioPreviewGain.push_back(amp * audioPreview[i]);
+				audioPreviewGain[i] = amp * audioPreview[i];
 			}
 			float previewStart = offset * bankLen * waveLen;
 			float previewRatio = bankLen * waveLen / (float)audioLen;
@@ -224,8 +229,8 @@ void importPage(int bankLen, int waveLen) {
 		// Bank preview
 		ImGui::Text("Bank Preview");
 		// Initialize from previous bank
-        std::vector<float> bankSamples;
-        for (int i = 0; i < bankLen * waveLen; i++) {
+        static std::vector<float> bankSamples;
+        while (bankSamples.size() < bankLen * waveLen) {
             bankSamples.push_back(0);
         }
 		computeImport(bankSamples.data(), bankLen, waveLen);
