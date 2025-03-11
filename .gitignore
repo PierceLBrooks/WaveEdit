@@ -1,6 +1,7 @@
 *.o
 *.dat
 *.log
+dist
 install
 cmake
 WaveEdit

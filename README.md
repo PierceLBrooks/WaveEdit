@@ -7,7 +7,7 @@ The wavetable and bank editor for the Synthesis Technology [E370](http://synthte
 Clone the in-source dependencies.
 
 ```
-	git submodule update --init --recursive
+git submodule update --init --recursive
 ```
 
 Compile the program.
@@ -15,35 +15,36 @@ Compile the program.
 ### Windows
 
 ```
-	mkdir cmake
-	cd cmake
-	cmake -G "MinGW Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ..
-	cmake --build . --target install --config Release --verbose
-	cd ..
+mkdir cmake
+cd cmake
+cmake -G "MinGW Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --target install --config Release --verbose
+cd ..
 ```
 
 ### Linux
 
 ```
-	mkdir cmake
-	cd cmake
-	cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ..
-	cmake --build . --target install --config Release --verbose
-	cd ..
+mkdir cmake
+cd cmake
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --target install --config Release --verbose
+cd ..
 ```
 
 ### MacOS
 
 ```
-	mkdir cmake
-	cd cmake
-	cmake -G "Xcode" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ..
-	cmake --build . --target install --config Release --verbose
-	cd ..
+sudo xcode-select --install
+mkdir cmake
+cd cmake
+cmake -G "Xcode" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --target install --config Release --verbose
+cd ..
 ```
 
 Launch the program.
 
 ```
-	./WaveEdit
+./WaveEdit
 ```
