@@ -87,7 +87,7 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
 	if (playEnabled) {
 		// Apply exponential smoothing to frequency
 		const float lambdaFrequency = 0.5;
-		playFrequency = clampf(playFrequency, 1.0, 10000.0);
+		playFrequency = clampf(playFrequency, 1.0, 44100.0);
 		playFrequencySmooth = powf(playFrequencySmooth, 1.0 - lambdaFrequency) * powf(playFrequency, lambdaFrequency);
 		double ratio = (double)audioSpec.freq / playingBank->waveLen / playFrequencySmooth;
 

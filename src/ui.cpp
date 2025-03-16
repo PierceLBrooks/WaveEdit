@@ -432,7 +432,7 @@ void renderMenu() {
                 if (prompt != NULL) {
                     if (strlen(prompt) > 0) {
                         bankLen = std::min(44100, std::max(1, abs(atoi(prompt))));
-                        if (bankLen % BANK_GRID_WIDTH == 0) {
+                        if ((bankLen * waveLen) % BANK_GRID_WIDTH == 0) {
                             currentBank.clear(bankLen);
                         } else {
                             osdialog_message(OSDIALOG_ERROR, OSDIALOG_OK, (std::string("\"Bank Length\" must be a multiple of ")+std::to_string(BANK_GRID_WIDTH)).c_str());
@@ -496,7 +496,7 @@ void renderPreview() {
 	ImGui::SliderFloat("##playVolume", &playVolume, -60.0f, 0.0f, "Volume: %.2f dB");
 	ImGui::PushItemWidth(-1.0);
 	ImGui::SameLine();
-	ImGui::SliderFloat("##playFrequency", &playFrequency, 1.0f, 10000.0f, "Frequency: %.2f Hz", 0.0f);
+	ImGui::SliderFloat("##playFrequency", &playFrequency, 1.0f, 44100.0f, "Frequency: %.2f Hz", 0.0f);
 
 	ImGui::Checkbox("Morph Interpolate", &morphInterpolate);
 	if (playModeXY) {

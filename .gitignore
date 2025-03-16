@@ -1,6 +1,12 @@
+*.a
 *.o
-*.dat
+*.so
+*.wt
+*.wav
 *.log
+*.dat
+*.dll
+*.dylib
 dist
 install
 cmake

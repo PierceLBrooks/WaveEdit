@@ -7,6 +7,8 @@
 static void FFT(const float *in, float *out, int len, bool inverse) {
 	PFFFT_Setup *setup = pffft_new_setup(len, PFFFT_REAL);
 	float *work = NULL;
+	if (!setup)
+		return;
 	if (len >= 4096)
 		work = (float*)pffft_aligned_malloc(sizeof(float) * len);
 	pffft_transform_ordered(setup, in, out, work, inverse ? PFFFT_BACKWARD : PFFFT_FORWARD);
