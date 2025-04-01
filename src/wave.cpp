@@ -56,6 +56,17 @@ void Wave::clear(int len) {
     }
 }
 
+void Wave::randomize(int seed) {
+    std::mt19937 generator;
+    std::uniform_real_distribution<float> distributor(-1, 1);
+    clear(waveLen);
+    generator.seed(seed);
+    for (int i = 0; i < waveLen; i++) {
+        samples[i] = distributor(generator);
+    }
+    commitSamples();
+}
+
 void Wave::updatePost() {
     static std::vector<float> out;
 	while (out.size() < waveLen) {

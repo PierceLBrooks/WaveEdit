@@ -25,6 +25,29 @@ void Bank::clear(int len) {
 }
 
 
+void Bank::randomize(int seed) {
+    std::mt19937 generator;
+    std::uniform_real_distribution<float> distributor(-1, 1);
+    clear(bankLen);
+    generator.seed(seed);
+    for (int i = 0; i < bankLen; i++) {
+        waves[i].clear(waveLen);
+        for (int j = 0; j < waveLen; j++) {
+            waves[i].samples[j] = distributor(generator);
+        }
+        waves[i].commitSamples();
+    }
+}
+
+int Bank::getSeed() {
+    std::random_device randomDevice;
+    std::mt19937 generator;
+    std::uniform_int_distribution<int> distributor(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+    generator.seed(randomDevice());
+    return distributor(generator);
+}
+
+
 void Bank::swap(int i, int j) {
 	Wave tmp = waves[i];
 	waves[i] = waves[j];

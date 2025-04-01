@@ -12,6 +12,8 @@
 #include <thread>
 #include <vector>
 #include <complex>
+#include <limits>
+#include <random>
 
 
 #define STRINGIFY(x) #x
@@ -172,6 +174,7 @@ struct Wave {
 	bool normalize;
 
 	void clear(int len = WAVE_LEN);
+    void randomize(int seed);
 	/** Generates post arrays from the sample array, by applying effects */
 	void updatePost();
 	void commitSamples();
@@ -206,6 +209,8 @@ struct Bank {
 	std::vector<Wave> waves; // BANK_LEN
 
 	void clear(int len = BANK_LEN);
+    void randomize(int seed);
+    int getSeed();
 	void swap(int i, int j);
 	void shuffle();
 	/** `in` must be length BANK_LEN * WAVE_LEN */

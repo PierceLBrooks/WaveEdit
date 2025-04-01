@@ -427,22 +427,22 @@ void renderMenu() {
             int bankLen = currentBank.bankLen;
             int waveLen = currentBank.waveLen;
             showCurrentBankPage();
-            if (ImGui::MenuItem("Bank Length", NULL, false)) {
-                char *prompt = osdialog_prompt(OSDIALOG_INFO, "Bank Length", std::to_string(bankLen).c_str());
+            if (ImGui::MenuItem("Bank Size...", NULL, false)) {
+                char *prompt = osdialog_prompt(OSDIALOG_INFO, "Bank Size", std::to_string(bankLen).c_str());
                 if (prompt != NULL) {
                     if (strlen(prompt) > 0) {
                         bankLen = std::min(44100, std::max(1, abs(atoi(prompt))));
                         if ((bankLen * waveLen) % BANK_GRID_WIDTH == 0) {
                             currentBank.clear(bankLen);
                         } else {
-                            osdialog_message(OSDIALOG_ERROR, OSDIALOG_OK, (std::string("\"Bank Length\" must be a multiple of ")+std::to_string(BANK_GRID_WIDTH)).c_str());
+                            osdialog_message(OSDIALOG_ERROR, OSDIALOG_OK, (std::string("\"Bank Size\" must be a multiple of ")+std::to_string(BANK_GRID_WIDTH)).c_str());
                         }
                     }
                     free(prompt);
                 }
             }
-            if (ImGui::MenuItem("Wave Length", NULL, false)) {
-                char *prompt = osdialog_prompt(OSDIALOG_INFO, "Wave Length", std::to_string(waveLen).c_str());
+            if (ImGui::MenuItem("Wave Size...", NULL, false)) {
+                char *prompt = osdialog_prompt(OSDIALOG_INFO, "Wave Size", std::to_string(waveLen).c_str());
                 if (prompt != NULL) {
                     if (strlen(prompt) > 0) {
                         waveLen = std::min(44100, std::max(1, abs(atoi(prompt))));
@@ -450,6 +450,30 @@ void renderMenu() {
                         currentBank.clear(bankLen);
                     }
                     free(prompt);
+                }
+            }
+            if (ImGui::MenuItem("Randomize Bank...", NULL, false)) {
+                int seed = currentBank.getSeed();
+                char *prompt = osdialog_prompt(OSDIALOG_INFO, "Seed", std::to_string(seed).c_str());
+                if (prompt != NULL) {
+                    if (strlen(prompt) > 0) {
+                        seed = atoi(prompt);
+                    }
+                    free(prompt);
+                    currentBank.randomize(seed);
+                    historyPush();
+                }
+            }
+            if (ImGui::MenuItem("Randomize Wave...", NULL, false)) {
+                int seed = currentBank.getSeed();
+                char *prompt = osdialog_prompt(OSDIALOG_INFO, "Seed", std::to_string(seed).c_str());
+                if (prompt != NULL) {
+                    if (strlen(prompt) > 0) {
+                        seed = atoi(prompt);
+                    }
+                    free(prompt);
+                    currentBank.waves[selectedId].randomize(seed);
+                    historyPush();
                 }
             }
             ImGui::EndMenu();
