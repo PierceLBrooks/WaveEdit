@@ -1,5 +1,5 @@
 #include "WaveEdit.hpp"
-#include <string.h>
+#include "exprtk.hpp"
 #include <sndfile.h>
 
 
@@ -65,6 +65,37 @@ void Wave::randomize(int seed) {
         samples[i] = distributor(generator);
     }
     commitSamples();
+}
+
+bool Wave::overwrite(std::string formula) {
+    float x;
+    float wave;
+    exprtk::symbol_table<float> symbols;
+    exprtk::expression<float> expression;
+    exprtk::parser<float> parser;
+    if (!symbols.add_variable("x", x)) {
+        return false;
+    }
+    if (!symbols.add_variable("wavesize", wave)) {
+        return false;
+    }
+    if (!symbols.add_constants()) {
+        return false;
+    }
+    if (!expression.register_symbol_table(symbols)) {
+        return false;
+    }
+    if (!parser.compile(formula, expression)) {
+        return false;
+    }
+    wave = waveLen;
+    clear(waveLen);
+    for (int j = 0; j < waveLen; j++) {
+        x = ((float)j) / waveLen;
+        samples[j] = clampf(expression.value(), -1.0, 1.0);
+    }
+    commitSamples();
+    return true;
 }
 
 void Wave::updatePost() {

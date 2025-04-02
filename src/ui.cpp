@@ -152,6 +152,7 @@ static char *getLastDir() {
 }
 
 static void menuOpenBank() {
+	playEnabled = false;
 	char *dir = getLastDir();
 	char *path = osdialog_file(OSDIALOG_OPEN, dir, NULL, NULL);
 	if (path) {
@@ -164,6 +165,7 @@ static void menuOpenBank() {
 }
 
 static void menuSaveBankAs() {
+	playEnabled = false;
 	char *dir = getLastDir();
 	char *path = osdialog_file(OSDIALOG_SAVE, dir, "Untitled.wav", NULL);
 	if (path) {
@@ -182,6 +184,7 @@ static void menuSaveBank() {
 }
 
 static void menuSaveWaves() {
+	playEnabled = false;
 	char *dir = getLastDir();
 	char *path = osdialog_file(OSDIALOG_OPEN_DIR, dir, NULL, NULL);
 	if (path) {
@@ -335,6 +338,7 @@ void renderWaveMenu() {
 	}
 
 	if (ImGui::MenuItem("Open Wave...")) {
+		playEnabled = false;
 		char *dir = getLastDir();
 		char *path = osdialog_file(OSDIALOG_OPEN, dir, NULL, NULL);
 		if (path) {
@@ -346,6 +350,7 @@ void renderWaveMenu() {
 		free(dir);
 	}
 	if (ImGui::MenuItem("Save Wave As...")) {
+		playEnabled = false;
 		char *dir = getLastDir();
 		char *path = osdialog_file(OSDIALOG_SAVE, dir, "Untitled.wav", NULL);
 		if (path) {
@@ -428,6 +433,7 @@ void renderMenu() {
             int waveLen = currentBank.waveLen;
             showCurrentBankPage();
             if (ImGui::MenuItem("Bank Size...", NULL, false)) {
+                playEnabled = false;
                 char *prompt = osdialog_prompt(OSDIALOG_INFO, "Bank Size", std::to_string(bankLen).c_str());
                 if (prompt != NULL) {
                     if (strlen(prompt) > 0) {
@@ -442,6 +448,7 @@ void renderMenu() {
                 }
             }
             if (ImGui::MenuItem("Wave Size...", NULL, false)) {
+                playEnabled = false;
                 char *prompt = osdialog_prompt(OSDIALOG_INFO, "Wave Size", std::to_string(waveLen).c_str());
                 if (prompt != NULL) {
                     if (strlen(prompt) > 0) {
@@ -453,27 +460,59 @@ void renderMenu() {
                 }
             }
             if (ImGui::MenuItem("Randomize Bank...", NULL, false)) {
+                playEnabled = false;
                 int seed = currentBank.getSeed();
                 char *prompt = osdialog_prompt(OSDIALOG_INFO, "Seed", std::to_string(seed).c_str());
                 if (prompt != NULL) {
                     if (strlen(prompt) > 0) {
                         seed = atoi(prompt);
+                        currentBank.randomize(seed);
+                        historyPush();
                     }
                     free(prompt);
-                    currentBank.randomize(seed);
-                    historyPush();
                 }
             }
             if (ImGui::MenuItem("Randomize Wave...", NULL, false)) {
+                playEnabled = false;
                 int seed = currentBank.getSeed();
                 char *prompt = osdialog_prompt(OSDIALOG_INFO, "Seed", std::to_string(seed).c_str());
                 if (prompt != NULL) {
                     if (strlen(prompt) > 0) {
                         seed = atoi(prompt);
+                        currentBank.waves[selectedId].randomize(seed);
+                        historyPush();
                     }
                     free(prompt);
-                    currentBank.waves[selectedId].randomize(seed);
-                    historyPush();
+                }
+            }
+            if (ImGui::MenuItem("Overwrite Bank with Formula...", NULL, false)) {
+                playEnabled = false;
+                char *prompt = osdialog_prompt(OSDIALOG_INFO, "0 <= x <= 1 && -1 <= y <= 1 && y == ...", "1-abs(sin((1-x)*pi*(1-(waveindex/wavesize)*(bankindex/banksize))))");
+                if (prompt != NULL) {
+                    bool success  = false;
+                    if (strlen(prompt) > 0) {
+                        success = currentBank.overwrite(std::string(prompt));
+                        historyPush();
+                    }
+                    free(prompt);
+                    if (!success) {
+                        osdialog_message(OSDIALOG_ERROR, OSDIALOG_OK, "Formula evaluation failure!");
+                    }
+                }
+            }
+            if (ImGui::MenuItem("Overwrite Wave with Formula...", NULL, false)) {
+                char *prompt = osdialog_prompt(OSDIALOG_INFO, "0 <= x <= 1 && -1 <= y <= 1 && y == ...", "sin(x*pi*2)");
+                if (prompt != NULL) {
+                    playEnabled = false;
+                    bool success  = false;
+                    if (strlen(prompt) > 0) {
+                        success = currentBank.waves[selectedId].overwrite(std::string(prompt));
+                        historyPush();
+                    }
+                    free(prompt);
+                    if (!success) {
+                        osdialog_message(OSDIALOG_ERROR, OSDIALOG_OK, "Formula evaluation failure!");
+                    }
                 }
             }
             ImGui::EndMenu();

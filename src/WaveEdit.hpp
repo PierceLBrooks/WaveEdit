@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -175,6 +176,7 @@ struct Wave {
 
 	void clear(int len = WAVE_LEN);
     void randomize(int seed);
+    bool overwrite(std::string formula);
 	/** Generates post arrays from the sample array, by applying effects */
 	void updatePost();
 	void commitSamples();
@@ -204,11 +206,13 @@ extern bool clipboardActive;
 #define BANK_GRID_HEIGHT 8
 
 struct Bank {
+    int totalLen;
     int bankLen;
     int waveLen;
 	std::vector<Wave> waves; // BANK_LEN
 
 	void clear(int len = BANK_LEN);
+    bool overwrite(std::string formula);
     void randomize(int seed);
     int getSeed();
 	void swap(int i, int j);

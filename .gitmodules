@@ -16,3 +16,6 @@
 [submodule "ext/vorbis"]
 	path = ext/vorbis
 	url = https://github.com/xiph/vorbis.git
+[submodule "ext/exprtk"]
+	path = ext/exprtk
+	url = https://github.com/ArashPartow/exprtk.git

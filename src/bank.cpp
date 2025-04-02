@@ -1,5 +1,5 @@
 #include "WaveEdit.hpp"
-#include <string.h>
+#include "exprtk.hpp"
 #include <sndfile.h>
 
 #if defined(_WIN32)
@@ -17,11 +17,61 @@ void Bank::clear(int len) {
 	// The lazy way
     waves.clear();
     bankLen = len;
+    totalLen = waveLen * bankLen;
 
 	for (int i = 0; i < len; i++) {
         waves.push_back(Wave(waveLen));
 		waves[i].commitSamples();
 	}
+}
+
+
+bool Bank::overwrite(std::string formula) {
+    float x;
+    float bank;
+    float wave;
+    float bankIdx;
+    float waveIdx;
+    exprtk::symbol_table<float> symbols;
+    exprtk::expression<float> expression;
+    exprtk::parser<float> parser;
+    if (!symbols.add_variable("x", x)) {
+        return false;
+    }
+    if (!symbols.add_variable("banksize", bank)) {
+        return false;
+    }
+    if (!symbols.add_variable("wavesize", wave)) {
+        return false;
+    }
+    if (!symbols.add_variable("bankindex", bankIdx)) {
+        return false;
+    }
+    if (!symbols.add_variable("waveindex", waveIdx)) {
+        return false;
+    }
+    if (!symbols.add_constants()) {
+        return false;
+    }
+    if (!expression.register_symbol_table(symbols)) {
+        return false;
+    }
+    if (!parser.compile(formula, expression)) {
+        return false;
+    }
+    bank = bankLen;
+    wave = waveLen;
+    clear(bankLen);
+    for (int i = 0; i < bankLen; i++) {
+        bankIdx = i;
+        for (int j = 0; j < waveLen; j++) {
+            waveIdx = j;
+            x = ((float)((i * waveLen) + j)) / totalLen;
+            waves[i].samples[j] = clampf(expression.value(), -1.0, 1.0);
+        }
+        waves[i].commitSamples();
+    }
+    return true;
 }
 
 
@@ -304,14 +354,14 @@ void Bank::loadWT(const char *filename)
 	std::vector<float> rawSamples;
 
 	if (flags & 4) {
-		for (uint32_t i = 0; i < waveLen * bankLen; ++i) {
+		for (uint32_t i = 0; i < totalLen; ++i) {
 			int16_t sample = 0;
 			freadLE16((uint16_t *)&sample, f);
 			rawSamples.push_back(sample / 32768.0f);
 		}
 	}
 	else {
-		for (uint32_t i = 0; i < waveLen * bankLen; ++i) {
+		for (uint32_t i = 0; i < totalLen; ++i) {
 			union { uint32_t i; float f; } u;
 			u.i = 0;
 			freadLE32(&u.i, f);

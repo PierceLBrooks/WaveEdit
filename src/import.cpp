@@ -59,7 +59,8 @@ static void clearImport(int bankLen = BANK_LEN, int waveLen = WAVE_LEN) {
 }
 
 static void loadImport(const char *path, int bankLen = BANK_LEN, int waveLen = WAVE_LEN) {
-    audioLenMax = bankLen * waveLen * 100;
+    int totalLen = bankLen * waveLen;
+    audioLenMax = totalLen * 100;
 	clearImport();
 	audio = loadAudio(path, &audioLen);
 	if (!audio) {
@@ -84,7 +85,7 @@ static void loadImport(const char *path, int bankLen = BANK_LEN, int waveLen = W
 	//zoomFit();
     zoom = 1.0;
     leftTrim = 0;
-    rightTrim = bankLen * waveLen;
+    rightTrim = totalLen;
 
 	// Generate status line
 	char *pathCpy = strdup(path);
@@ -94,9 +95,9 @@ static void loadImport(const char *path, int bankLen = BANK_LEN, int waveLen = W
 	free(pathCpy);
 
 	// Render audio preview by resampling to constant size
-	audioPreview = new float[bankLen * waveLen]();
-	double previewRatio = bankLen * waveLen / (double)audioLen;
-	resample(audio, audioLen, audioPreview, bankLen * waveLen, previewRatio);
+	audioPreview = new float[totalLen]();
+    double previewRatio = totalLen / (double)audioLen;
+    resample(audio, audioLen, audioPreview, totalLen, previewRatio);
 }
 
 static float getAudioAmplitude() {
@@ -116,24 +117,25 @@ static void computeImport(float *samples, int bankLen = BANK_LEN, int waveLen = 
 	}
 
 	static std::vector<float> importSamples;
-    while (importSamples.size() < bankLen * waveLen) {
+    int totalLen = bankLen * waveLen;
+    while (importSamples.size() < totalLen) {
         importSamples.push_back(0);
     }
 
 	// A bunch of weird constants to align the resampler correctly
 	// Basically x's and w's are indices for the audio array, y's are for the bank array
 	float wl = offset * audioLen;
-	float wr = wl + bankLen * waveLen * zoom;
+    float wr = wl + totalLen * zoom;
 	float xl = clampf(wl, 0, audioLen);
 	float xr = clampf(wr, 0, audioLen);
-	float yl = rescalef(xl, wl, wr, 0, bankLen * waveLen);
-	float yr = rescalef(xr, wl, wr, 0, bankLen * waveLen);
-	yl = clampf(yl, 0, bankLen * waveLen);
-	yr = clampf(yr, 0, bankLen * waveLen);
+	float yl = rescalef(xl, wl, wr, 0, totalLen);
+	float yr = rescalef(xr, wl, wr, 0, totalLen);
+	yl = clampf(yl, 0, totalLen);
+	yr = clampf(yr, 0, totalLen);
 	yl = clampf(yl, leftTrim, rightTrim);
 	yr = clampf(yr, leftTrim, rightTrim);
-	xl = rescalef(yl, 0, bankLen * waveLen, wl, wr);
-	xr = rescalef(yr, 0, bankLen * waveLen, wl, wr);
+    xl = rescalef(yl, 0, totalLen, wl, wr);
+    xr = rescalef(yr, 0, totalLen, wl, wr);
 	int xli = roundf(xl);
 	int xri = roundf(xr);
 	int yli = roundf(yl);
@@ -154,7 +156,7 @@ static void computeImport(float *samples, int bankLen = BANK_LEN, int waveLen = 
 	}
 
 	float amp = powf(10.0, gain / 20.0);
-	for (int i = 0; i < bankLen * waveLen; i++) {
+    for (int i = 0; i < totalLen; i++) {
 		importSamples[i] *= amp;
 
 		switch (mode) {
@@ -177,6 +179,7 @@ static void computeImport(float *samples, int bankLen = BANK_LEN, int waveLen = 
 
 
 void importPage(int bankLen, int waveLen) {
+    int totalLen = bankLen * waveLen;
 	ImGui::BeginChild("Import", ImVec2(0, 0), true);
 	{
 		ImGui::PushItemWidth(-1.0);
@@ -202,17 +205,17 @@ void importPage(int bankLen, int waveLen) {
 		ImGui::Text("Imported Audio Preview");
 		if (audioPreview) {
             static std::vector<float> audioPreviewGain;
-			while (audioPreviewGain.size() < bankLen * waveLen) {
+            while (audioPreviewGain.size() < totalLen) {
 				audioPreviewGain.push_back(0);
 			}
-			for (int i = 0; i < bankLen * waveLen; i++) {
+			for (int i = 0; i < totalLen; i++) {
 				audioPreviewGain[i] = amp * audioPreview[i];
 			}
-			float previewStart = offset * bankLen * waveLen;
-			float previewRatio = bankLen * waveLen / (float)audioLen;
-			float previewEnd = previewStart + bankLen * waveLen * previewRatio * zoom;
+			float previewStart = offset * totalLen;
+			float previewRatio = totalLen / (float)audioLen;
+			float previewEnd = previewStart + totalLen * previewRatio * zoom;
 			float deltaAudio = renderBankWave("audio preview", 200.0, audioPreviewGain.data(),
-                bankLen * waveLen,
+                totalLen,
 				previewStart,
 				previewEnd,
                 bankLen);
@@ -220,9 +223,9 @@ void importPage(int bankLen, int waveLen) {
 		}
 		else {
 			renderBankWave("audio preview", 200.0, NULL,
-                bankLen * waveLen,
+                totalLen,
 				0,
-                bankLen * waveLen,
+                totalLen,
                 bankLen);
 		}
 
@@ -230,17 +233,17 @@ void importPage(int bankLen, int waveLen) {
 		ImGui::Text("Bank Preview");
 		// Initialize from previous bank
         static std::vector<float> bankSamples;
-        while (bankSamples.size() < bankLen * waveLen) {
+        while (bankSamples.size() < totalLen) {
             bankSamples.push_back(0);
         }
 		computeImport(bankSamples.data(), bankLen, waveLen);
 		importBank.setSamples(bankSamples.data());
 		float deltaBank = renderBankWave("bank preview", 200.0, bankSamples.data(),
-            bankLen * waveLen,
+            totalLen,
 			0,
-            bankLen * waveLen,
+            totalLen,
             bankLen);
-		offset -= deltaBank * zoom / audioLen * (bankLen * waveLen);
+        offset -= deltaBank * zoom / audioLen * totalLen;
 
 		if (audio) {
 			ImGui::Text("Import Settings");
@@ -274,7 +277,7 @@ void importPage(int bankLen, int waveLen) {
 			// Trim
 			if (ImGui::Button("Reset Trim")) {
 				leftTrim = 0;
-				rightTrim = bankLen * waveLen;
+				rightTrim = totalLen;
 			}
 			ImGui::SameLine();
 			static bool snapTrim = true;
@@ -287,9 +290,9 @@ void importPage(int bankLen, int waveLen) {
 			ImGui::PushItemWidth(-1.0);
 			float width = ImGui::CalcItemWidth() / 2.0 - ImGui::GetStyle().FramePadding.y;
 			ImGui::PushItemWidth(width);
-			ImGui::SliderFloat("##leftTrim", &leftTrim, 0.0, bankLen * waveLen, snapTrim ? "Left Trim: %.0f" : "Left Trim: %.2f");
+            ImGui::SliderFloat("##leftTrim", &leftTrim, 0.0, totalLen, snapTrim ? "Left Trim: %.0f" : "Left Trim: %.2f");
 			ImGui::SameLine();
-			ImGui::SliderFloat("##rightTrim", &rightTrim, 0.0, bankLen * waveLen, snapTrim ? "Right Trim: %.0f" : "Right Trim: %.2f");
+            ImGui::SliderFloat("##rightTrim", &rightTrim, 0.0, totalLen, snapTrim ? "Right Trim: %.0f" : "Right Trim: %.2f");
 			ImGui::PopItemWidth();
 			ImGui::PopItemWidth();
 
