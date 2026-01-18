@@ -252,7 +252,7 @@ if (APPLE)
     endif()
     add_custom_command(TARGET WaveEdit POST_BUILD COMMAND ${CMAKE_INSTALL_NAME_TOOL} -add_rpath "@executable_path/" $<TARGET_FILE:WaveEdit> || :)
     string(LENGTH "${CODESIGNING}" LEN)
-    if ("${LEN}" EQUAL "40" AND "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+    if ("${LEN}" STREQUAL "40" AND "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
         add_custom_command(TARGET WaveEdit POST_BUILD COMMAND codesign --sign "${CODESIGNING}" --force --verbose --timestamp -o runtime --deep $<TARGET_FILE:WaveEdit> || :)
     endif()
     install(CODE [[
